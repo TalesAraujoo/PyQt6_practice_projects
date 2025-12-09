@@ -1,194 +1,181 @@
 # Imports
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QVBoxLayout, QLineEdit
+from PyQt6.QtGui import QFont
 
 result_printed = False
 
-def math_results(a, b, op):
-    a = float(a)
-    b = float(b)
-    result = 0
-    if op == '+':
-        result = a+b
-    elif op == '-':
-        result = a-b
-    elif op == 'x' or op == '*':
-        result = a*b
-    else:
-        if b == 0:
-            return 'error'
+class CalcApp(QWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setWindowTitle("Caculator")
+        self.resize(250, 300)
+
+        self.calc_display = QLineEdit()
+        self.calc_display.setReadOnly(True)
+        self.calc_display.setFont(QFont("Helvetica", 25))
+        self.calc_display.setText("0")
+
+        self.calc_history_display = QLineEdit()
+        self.calc_history_display.setReadOnly(True)
+
+        self.buttons = [
+            ("C",0,0), ("<-",0,1), ("%",0,2), ("/",0,3),
+            ("7",1,0), ("8",1,1), ("9",1,2), ("x",1,3),
+            ("4",2,0), ("5",2,1), ("6",2,2), ("-",2,3),
+            ("1",3,0), ("2",3,1), ("3",3,2), ("+",3,3),
+            (".",4,0), ("0",4,1),("=", 4,3)
+            ]
+
+        self.grid = QGridLayout()
+
+        for btn, row, col in self.buttons:
+            tmp_btn = QPushButton(btn)
+            tmp_btn.setStyleSheet("QPushButton { font: 18pt Comic Sans MS; padding: 10px; }")
+          
+            tmp_btn.clicked.connect(self.button_clicked)
+            self.grid.addWidget(tmp_btn, row, col)
+
+
+        # Designs here
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.addWidget(self.calc_history_display)
+        self.main_layout.addWidget(self.calc_display)
+        self.main_layout.addLayout(self.grid)
+
+        self.setLayout(self.main_layout)
+
+
+    def math_results(a, b, op):
+        a = float(a)
+        b = float(b)
+        result = 0
+        if op == '+':
+            result = a+b
+        elif op == '-':
+            result = a-b
+        elif op == 'x' or op == '*':
+            result = a*b
         else:
-            result = a/b
-    
-    if result.is_integer():
-        result = int(result)
-        return str(result)
-    else:
-        return str(result)
-        
-
-def button_clicked():
-    button = app.sender()
-    text = button.text()
-    tmp_display = calc_display.text()
-    global result_printed
-
-    operators = ['/', '*', '-', '+', 'x', 'X']
-
-    if tmp_display == 'error':
-        if text == 'C':
-            calc_display.setText('0')
-    
-    else: 
-        if text == 'C':
-            calc_display.setText('0')
-        elif text == '<-':
-            if tmp_display == '0':
-                pass
+            if b == 0:
+                return 'error'
             else:
-                tmp_display = tmp_display[:-1]
-                calc_display.setText(tmp_display)
-        elif text == '=':
-            if tmp_display == '0':
-                pass
-            else:
-                tmp_a = ''
-                tmp_b = ''
-                operand = ''
-                result = ''
-                
-
-                for num in tmp_display:
-                    
-                    if not operand:
-                        if num.isnumeric():
-                            tmp_a += num
-                        elif num == '.':
-                            tmp_a += num
-                        else:
-                            operand = num
-                    else:
-                        if num.isnumeric():
-                            tmp_b += num
-                        elif num == '.':
-                            tmp_b += num
-                        else:
-                            result = math_results(tmp_a, tmp_b, operand)
-                            tmp_a = result
-                            tmp_b = ''
-                            operand = num
+                result = a/b
         
-                if any(op == tmp_display[-1] for op in operators):
-                    if tmp_b == '':
-                        if result == '':
-                            pass
-                        else:
-                            calc_display.setText(result)
-                            result_printed = True
-                else:
-                    if tmp_display[-1] == '.':
-                        result = math_results(tmp_a, tmp_b, operand)
-                        calc_display.setText(result)  
-                        result_printed = True  
-                    elif tmp_display[-1].isnumeric():
-                        result = math_results(tmp_a, tmp_b, operand)
-                        calc_display.setText(result) 
-                        result_printed = True
-                    elif operand >= 1:
-                        result = tmp_a
-                        calc_display.setText(result)
-                        result_printed = True
-
+        if result.is_integer():
+            result = int(result)
+            return str(result)
         else:
-            if tmp_display == '0':
-                if text in operators:
-                    tmp_display += text
-                    calc_display.setText(tmp_display)
-                elif text == '.':
-                    tmp_display += text
-                    calc_display.setText(tmp_display)
+            return str(result)
+            
+
+    def button_clicked(self):
+        global result_printed
+        button = app.sender()
+        text = button.text()
+        current = self.calc_display.text()
+
+        operators = {'+', '-', 'x', '/', '*'}
+
+        # 1. Clear everything
+        if text == 'C':
+            self.calc_display.setText("0")
+            self.calc_history_display.setText("")
+            result_printed = False
+            return
+
+        # 2. Backspace
+        if text == '<-':
+            if result_printed or current in ("0", "Error"):
+                self.calc_display.setText("0")
+                result_printed = False
+            elif len(current) > 1:
+                self.calc_display.setText(current[:-1])
+            else:
+                self.calc_display.setText("0")
+            return
+
+        # 3. Equals - calculate!
+        if text == '=':
+            if current in ("0", "Error"):
+                return
+            try:
+                expr = current.replace('x', '*')
+                result = eval(expr)
+                result_str = str(int(result)) if result.is_integer() else str(result)
+                self.calc_display.setText(result_str)
+                self.calc_history_display.setText(current)
+                result_printed = True
+            except ZeroDivisionError:
+                self.calc_display.setText("Error")
+                result_printed = True
+            except:
+                pass  # ignore invalid like "5++"
+            return
+
+        # 4. If result was shown and we press a number → start new calculation
+        if result_printed and text.isdigit():
+            self.calc_display.setText(text)
+            result_printed = False
+            return
+
+        # 5. Get fresh display text
+        current = self.calc_display.text()
+        if current == "0" and text != '.':
+            if text in operators:
+                current = "0" + text
+            else:
+                current = text
+        else:
+            # Operator pressed
+            if text in operators:
+                if current and current[-1] in operators:
+                    current = current[:-1] + text  # replace last operator
                 else:
-                    tmp_display = text
-                    calc_display.setText(tmp_display)
-            else: 
-                if text in operators:
-                    if any(op == tmp_display[-1] for op in operators):
-                        tmp_display = tmp_display[:-1] + text
-                        calc_display.setText(tmp_display)
-                    else: 
-                        tmp_display += text
-                        calc_display.setText(tmp_display)
-                elif text == '.':
-                    tmp_num = ''
-                    for num in tmp_display:
-                        tmp_num += num
-                        if not num.isnumeric():
-                            if num == '.':
-                                pass
-                            else:
-                                tmp_num = ''
-
-                    if '.' in tmp_num:
-                        pass
-                    elif tmp_display[-1] == '.':
-                        pass
-                    elif tmp_display[-1].isnumeric():
-                        tmp_display += text
-                        calc_display.setText(tmp_display)
-                    else:
-                        tmp_display = tmp_display + '0' + '.'
-                        calc_display.setText(tmp_display)
+                    current += text
+                result_printed = False
+            # Decimal point
+            elif text == '.':
+                # Find last number part
+                last_part = ""
+                for c in reversed(current):
+                    if c in operators:
+                        break
+                    last_part = c + last_part
+                if '.' not in last_part:
+                    current += text
+            # Number or other
+            else:
+                if result_printed:
+                    current = text
+                    result_printed = False
                 else:
-                    if result_printed:
-                        calc_display.clear()
-                        calc_display.setText(text)
-                        result_printed = False
-                    else:
-                        tmp_display += text
-                        calc_display.setText(tmp_display)
+                    current += text
+
+        self.calc_display.setText(current if current else "0")
 
 
-# Main app objects and settings
-app = QApplication([])
-main_window = QWidget()
-main_window.setWindowTitle("Caculator")
-main_window.resize(250, 300)
+    def keyPressEvent(self, event):
+        key_pressed = event.key()
 
-# Create Objects / Widgets
+        if key_pressed == Qt.Key.Key_0:
+            self.calc_display.setText(str(key_pressed))
+        
+        elif key_pressed == Qt.Key.Key_8:
+            self.calc_display.setText(key_pressed)
 
-calc_display = QLineEdit()
-calc_display.setText("0")
-calc_history_display = QLineEdit()
-
-buttons = [
-    ("C",0,0), ("<-",0,1), ("%",0,2), ("/",0,3),
-    ("7",1,0), ("8",1,1), ("9",1,2), ("x",1,3),
-    ("4",2,0), ("5",2,1), ("6",2,2), ("-",2,3),
-    ("1",3,0), ("2",3,1), ("3",3,2), ("+",3,3),
-    (".",4,0), ("0",4,1),("=", 4,3)
-    ]
-
-grid = QGridLayout()
-
-for btn, row, col in buttons:
-    tmp_btn = QPushButton(btn)
-    tmp_btn.clicked.connect(button_clicked)
-    grid.addWidget(tmp_btn, row, col)
-
-
-# Designs here
-main_layout = QVBoxLayout()
-main_layout.addWidget(calc_history_display)
-main_layout.addWidget(calc_display)
-main_layout.addLayout(grid)
-
-main_window.setLayout(main_layout)
-
-
-#Events
-
-
+        elif key_pressed == Qt.Key.Key_9:
+            self.calc_display.setText(key_pressed)
 
 #Show / Run App
-main_window.show()
-app.exec()
+
+if __name__ in "__main__":
+    app = QApplication([])
+    main_window = CalcApp()
+    main_window.setStyleSheet("QWidget { background-color: #f0f0f8 }")
+    main_window.show()
+    app.exec()
