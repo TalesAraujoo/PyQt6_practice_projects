@@ -16,14 +16,31 @@ class TitleBar(QWidget):
 
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint()
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+
+        # IMPORTANT: only drag if clicking directly on the title bar
+        child = self.childAt(event.position().toPoint())
+        if isinstance(child, QPushButton):
+            return  # clicked on a button or label → don't drag
+
+        self._drag_pos = event.globalPosition().toPoint()
+        event.accept()
 
 
     def mouseMoveEvent(self, event):
-        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
-            self.window().move(self.window().pos()+ event.globalPosition().toPoint()- self._drag_pos)
+        if (
+            event.buttons() == Qt.MouseButton.LeftButton
+            and self._drag_pos is not None
+        ):
+            delta = event.globalPosition().toPoint() - self._drag_pos
+            self.window().move(self.window().pos() + delta)
             self._drag_pos = event.globalPosition().toPoint()
+            event.accept()
+            
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
 
 
 class CalcApp(QWidget):
