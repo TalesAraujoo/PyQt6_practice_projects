@@ -1,0 +1,102 @@
+QWidget {
+    background-color: #1e1e1e
+}
+
+QWidget#title_bar {
+    background-color: transparent;
+    border: None
+}
+
+QWidget#display_container {
+    background-color: transparent;
+    border: None;
+    padding: 10px;
+}
+
+QLabel#title_label {
+    color: white;
+    font-weight: bold;
+}
+
+QLineEdit#calc_display {
+    background-color: transparent;
+    color: white;
+    border: none;
+    padding: 10px;
+}
+
+QLineEdit#history_display {
+    background-color: transparent;
+    color: #888888;
+    border: none;
+    padding: 6px;
+}
+                          
+QPushButton {
+    background-color: #333333;
+    border: none;
+    border-radius: 18px;
+    font-size: 18px;
+    padding: 14px;
+    color: white;
+}
+
+QPushButton:hover {
+    background-color: #444444;
+}
+
+QPushButton:pressed {
+    background-color: #555555;
+}
+
+QPushButton#min_button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    font-size: 15px;
+    padding: 0;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+QPushButton#min_button:hover {
+    background-color: #444444;
+}
+
+QPushButton#close_button {
+    background-color: transparent;
+    color: white;
+    border: none;
+    font-size: 15px;
+    padding: 0;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+QPushButton#close_button:hover {
+    background-color: #ff9f0a;
+}
+
+QPushButton#equal {
+    background-color: #ff9f0a;
+    color: white;
+    font-weight: bold;
+}
+
+QPushButton#equal:hover {
+    background-color: #ffb347;
+}
+                           
+QPushButton#equal:pressed {
+    background-color: #e68a00;
+}     
+
+QPushButton#operator {
+    background-color: #ff9f0a;
+    color: white;
+    font-weight: bold;
+}
+
+QPushButton#operator:hover {
+    background-color: #ffb347;
+}

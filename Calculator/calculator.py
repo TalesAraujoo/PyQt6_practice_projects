@@ -1,7 +1,29 @@
 # Imports
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QVBoxLayout, QLineEdit
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QVBoxLayout, QLineEdit, QHBoxLayout, QLabel
 from PyQt6.QtGui import QFont
+from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).parent.resolve()
+
+
+class TitleBar(QWidget):
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._drag_pos = None
+
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint()
+
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
+            self.window().move(self.window().pos()+ event.globalPosition().toPoint()- self._drag_pos)
+            self._drag_pos = event.globalPosition().toPoint()
 
 
 class CalcApp(QWidget):
@@ -11,16 +33,55 @@ class CalcApp(QWidget):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.result_printed = False
 
+        with open(f"{SCRIPT_DIR}/styles.qss", 'r') as file: 
+            self.setStyleSheet(file.read())        
+        
+        #Removes Windows styling
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        
+        self.title_bar = TitleBar(self)       
+        self.title_bar.setFixedHeight(32)
+        self.title_bar.setObjectName('title_bar')
+
+        self.title_layout = QHBoxLayout(self.title_bar)
+        self.title_layout.setContentsMargins(0,0,0,0)
+        self.title_layout.setSpacing(0)
+
+        self.btn_min = QPushButton('_')
+        self.btn_close = QPushButton('X')
+        
+        self.btn_min.setFixedSize(28,28)
+        self.btn_min.setObjectName('min_button')
+        self.btn_close.setFixedSize(28,28)
+        self.btn_close.setObjectName('close_button')
+        
+        self.btn_min.clicked.connect(self.showMinimized)
+        self.btn_close.clicked.connect(self.close)
+
+        self.title_label = QLabel()
+        self.title_label.setText('Calculator')
+        self.title_label.setObjectName('title_label')
+
+        self.title_layout.addWidget(self.title_label)
+        self.title_layout.addStretch()
+        self.title_layout.addWidget(self.btn_min)
+        self.title_layout.addWidget(self.btn_close)
+
+
         self.setWindowTitle("Caculator")
         self.resize(250, 300)
-
+        
         self.calc_display = QLineEdit()
         self.calc_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.calc_display.setReadOnly(True)
+        self.calc_display.setObjectName('calc_display')
+        self.calc_display.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.calc_display.setFont(QFont("Helvetica", 25))
         self.calc_display.setText("0")
 
         self.calc_history_display = QLineEdit()
+        self.calc_history_display.setObjectName('history_display')
+        self.calc_history_display.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.calc_history_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.calc_history_display.setReadOnly(True)
 
@@ -29,24 +90,44 @@ class CalcApp(QWidget):
             ("7",1,0), ("8",1,1), ("9",1,2), ("x",1,3),
             ("4",2,0), ("5",2,1), ("6",2,2), ("-",2,3),
             ("1",3,0), ("2",3,1), ("3",3,2), ("+",3,3),
-            (".",4,0), ("0",4,1),("=", 4,3)
-            ]
+            ("0",4,0), (".",4,2),("=", 4,3)
+            ]   
 
         self.grid = QGridLayout()
 
         for btn, row, col in self.buttons:
             tmp_btn = QPushButton(btn)
-            tmp_btn.setStyleSheet("QPushButton { font: 18pt Comic Sans MS; padding: 10px; }")
-          
             tmp_btn.clicked.connect(self.buttonPressEvent)
-            self.grid.addWidget(tmp_btn, row, col)
+            
+            if btn == '=':
+                tmp_btn.setObjectName('equal')
+            elif btn in '+-/x':
+                tmp_btn.setObjectName('operator')
 
+            if btn == '0':
+                self.grid.addWidget(tmp_btn, row, col, 1, 2)
+            else: 
+                self.grid.addWidget(tmp_btn, row, col)
 
         # Designs here
         self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0,0,0,0)
+
+        self.display_container = QWidget()
+        self.display_container.setObjectName('display_container')
+
+        display_layout = QVBoxLayout()
+        display_layout.setSpacing(0)
+        display_layout.setContentsMargins(0,0,0,0)
+
+        display_layout.addWidget(self.calc_history_display)
+        display_layout.addWidget(self.calc_display)
+
+        self.display_container.setLayout(display_layout)
+
         self.main_layout.setContentsMargins(5, 5, 5, 5)
-        self.main_layout.addWidget(self.calc_history_display)
-        self.main_layout.addWidget(self.calc_display)
+        self.main_layout.addWidget(self.title_bar)
+        self.main_layout.addWidget(self.display_container)
         self.main_layout.addLayout(self.grid)
 
         self.setLayout(self.main_layout)
@@ -110,7 +191,7 @@ class CalcApp(QWidget):
             if current in ("0", "Error"):
                 return
             try:
-                expr = current.replace('x', '*')
+                expr = current.lower().replace('x', '*')
                 result = eval(expr)
                 result_str = str(int(result)) if result.is_integer() else str(result)
                 self.calc_display.setText(result_str)
@@ -169,6 +250,5 @@ class CalcApp(QWidget):
 if __name__ in "__main__":
     app = QApplication([])
     main_window = CalcApp()
-    main_window.setStyleSheet("QWidget { background-color: #f0f0f8 }")
     main_window.show()
     app.exec()
