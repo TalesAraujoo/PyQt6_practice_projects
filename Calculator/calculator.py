@@ -1,25 +1,27 @@
 # Imports
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QPushButton, QVBoxLayout, QLineEdit
+from PyQt6.QtWidgets import QApplication, QWidget, QGridLayout, QPushButton, QVBoxLayout, QLineEdit
 from PyQt6.QtGui import QFont
 
-result_printed = False
 
 class CalcApp(QWidget):
 
     def __init__(self):
         super().__init__()
-
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.result_printed = False
+
         self.setWindowTitle("Caculator")
         self.resize(250, 300)
 
         self.calc_display = QLineEdit()
+        self.calc_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.calc_display.setReadOnly(True)
         self.calc_display.setFont(QFont("Helvetica", 25))
         self.calc_display.setText("0")
 
         self.calc_history_display = QLineEdit()
+        self.calc_history_display.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.calc_history_display.setReadOnly(True)
 
         self.buttons = [
@@ -36,7 +38,7 @@ class CalcApp(QWidget):
             tmp_btn = QPushButton(btn)
             tmp_btn.setStyleSheet("QPushButton { font: 18pt Comic Sans MS; padding: 10px; }")
           
-            tmp_btn.clicked.connect(self.button_clicked)
+            tmp_btn.clicked.connect(self.buttonPressEvent)
             self.grid.addWidget(tmp_btn, row, col)
 
 
@@ -50,33 +52,37 @@ class CalcApp(QWidget):
         self.setLayout(self.main_layout)
 
 
-    def math_results(a, b, op):
-        a = float(a)
-        b = float(b)
-        result = 0
-        if op == '+':
-            result = a+b
-        elif op == '-':
-            result = a-b
-        elif op == 'x' or op == '*':
-            result = a*b
-        else:
-            if b == 0:
-                return 'error'
-            else:
-                result = a/b
-        
-        if result.is_integer():
-            result = int(result)
-            return str(result)
-        else:
-            return str(result)
-            
+    def keyPressEvent(self, event):
+        key = event.key()
+        text = event.text()
 
-    def button_clicked(self):
-        global result_printed
+        if text.isnumeric():
+            self.input_handler(text)
+        
+        elif text in '+-*/xX.,=%':
+            self.input_handler(text)
+
+        elif key == 16777221 or key == 16777220:
+            self.input_handler('=')
+    
+        elif key == 16777219:
+            self.input_handler('<-')
+        
+        elif key == 16777216:
+            self.input_handler('C')
+
+        elif key == 16777223:
+            self.input_handler('C')
+
+    
+    def buttonPressEvent(self):
         button = app.sender()
         text = button.text()
+        self.input_handler(text)
+
+
+    def input_handler(self,text):
+    
         current = self.calc_display.text()
 
         operators = {'+', '-', 'x', '/', '*'}
@@ -85,14 +91,14 @@ class CalcApp(QWidget):
         if text == 'C':
             self.calc_display.setText("0")
             self.calc_history_display.setText("")
-            result_printed = False
+            self.result_printed = False
             return
 
         # 2. Backspace
         if text == '<-':
-            if result_printed or current in ("0", "Error"):
+            if self.result_printed or current in ("0", "Error"):
                 self.calc_display.setText("0")
-                result_printed = False
+                self.result_printed = False
             elif len(current) > 1:
                 self.calc_display.setText(current[:-1])
             else:
@@ -109,18 +115,18 @@ class CalcApp(QWidget):
                 result_str = str(int(result)) if result.is_integer() else str(result)
                 self.calc_display.setText(result_str)
                 self.calc_history_display.setText(current)
-                result_printed = True
+                self.result_printed = True
             except ZeroDivisionError:
                 self.calc_display.setText("Error")
-                result_printed = True
+                self.result_printed = True
             except:
                 pass  # ignore invalid like "5++"
             return
 
         # 4. If result was shown and we press a number → start new calculation
-        if result_printed and text.isdigit():
+        if self.result_printed and text.isdigit():
             self.calc_display.setText(text)
-            result_printed = False
+            self.result_printed = False
             return
 
         # 5. Get fresh display text
@@ -137,7 +143,7 @@ class CalcApp(QWidget):
                     current = current[:-1] + text  # replace last operator
                 else:
                     current += text
-                result_printed = False
+                self.result_printed = False
             # Decimal point
             elif text == '.':
                 # Find last number part
@@ -150,29 +156,16 @@ class CalcApp(QWidget):
                     current += text
             # Number or other
             else:
-                if result_printed:
+                if self.result_printed:
                     current = text
-                    result_printed = False
+                    self.result_printed = False
                 else:
                     current += text
 
         self.calc_display.setText(current if current else "0")
 
 
-    def keyPressEvent(self, event):
-        key_pressed = event.key()
-
-        if key_pressed == Qt.Key.Key_0:
-            self.calc_display.setText(str(key_pressed))
-        
-        elif key_pressed == Qt.Key.Key_8:
-            self.calc_display.setText(key_pressed)
-
-        elif key_pressed == Qt.Key.Key_9:
-            self.calc_display.setText(key_pressed)
-
 #Show / Run App
-
 if __name__ in "__main__":
     app = QApplication([])
     main_window = CalcApp()
