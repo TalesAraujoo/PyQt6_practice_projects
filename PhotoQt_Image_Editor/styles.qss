@@ -1,0 +1,41 @@
+QWidget {
+    background-color: lightgrey;
+}
+
+Qwidget#title_bar {
+    background-color: transparent;
+    border: None
+}
+
+QPushButton#min_button {
+    background-color: transparent;
+    border: None
+}
+
+QPushButton#min_button:hover {
+    background-color: #a7a7a7;
+    color: white;
+    border: None;
+}
+
+QPushButton#max_button {
+    background-color: transparent;
+    border: None
+}
+
+QPushButton#max_button:hover {
+    background-color: #a7a7a7;
+    color: white;
+    border: None
+}
+
+QPushButton#close_button {
+    background-color: transparent;
+    border: None
+}
+
+QPushButton#close_button:hover {
+    background-color: red;
+    color: white;
+    border: None;
+}
