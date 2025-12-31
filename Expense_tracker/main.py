@@ -3,8 +3,9 @@ from PyQt6.QtWidgets import (
     QLineEdit, QLabel, QComboBox, QDateEdit, QTableWidget, QMessageBox, QTableWidgetItem
 )
 from PyQt6.QtSql import QSqlDatabase, QSqlQuery
-import sys
+from PyQt6.QtCore import QDate
 from pathlib import Path
+import sys
 import os
 
 
@@ -23,14 +24,16 @@ class TrackerApp(QWidget):
         
         self.date_label = QLabel('Date:')
         self.date_panel = QDateEdit()
+        self.date_panel.setDate(QDate.currentDate())
         self.category_label = QLabel('Category:')
         self.category_panel = QComboBox()
+        self.category_panel.addItems(['Shopping', 'Fixed Expenses', 'Groceries', 'Others'])
         self.amount_label = QLabel('Amount:')
         self.amount_panel = QLineEdit()
         self.description_label = QLabel('Description:')
         self.description_panel = QLineEdit()
-        self.add_expense = QPushButton('Add Expense')
-        self.del_expense = QPushButton('Delete Expense')
+        self.btn_add_expense = QPushButton('Add Expense')
+        self.btn_del_expense = QPushButton('Delete Expense')
         
         self.data_table = QTableWidget()
         self.data_table.setColumnCount(5)
@@ -45,8 +48,8 @@ class TrackerApp(QWidget):
         self.second_row.addWidget(self.amount_panel)
         self.second_row.addWidget(self.description_label)
         self.second_row.addWidget(self.description_panel)
-        self.third_row.addWidget(self.add_expense)
-        self.third_row.addWidget(self.del_expense)
+        self.third_row.addWidget(self.btn_add_expense)
+        self.third_row.addWidget(self.btn_del_expense)
         
 
         self.master_column.addLayout(self.first_row)
@@ -56,6 +59,9 @@ class TrackerApp(QWidget):
 
         self.setLayout(self.master_column)
         self.load_database_table()
+
+        self.btn_add_expense.clicked.connect(self.add_expense)
+        self.btn_del_expense.clicked.connect(self.del_expense)
 
 
     def load_database_table(self):
@@ -84,8 +90,60 @@ class TrackerApp(QWidget):
             row += 1
 
 
+    def add_expense(self):
+        date = self.date_panel.date().toString("dd-MM-yyyy")
+        category = self.category_panel.currentText()
+        amount = self.amount_panel.text()
+        description = self.description_panel.text()
+
+        query = QSqlQuery()
+
+        query.prepare("""
+                      INSERT INTO expenses
+                        (date, category, amount, description)
+                      VALUES
+                        (?, ?, ?, ?)
+                    """)
+
+        query.addBindValue(date)
+        query.addBindValue(category)
+        query.addBindValue(amount)
+        query.addBindValue(description)
+
+        query.exec()
 
 
+        self.date_panel.setDate(QDate.currentDate())
+        self.category_panel.setCurrentIndex(0)
+        self.amount_panel.clear()
+        self.description_panel.clear()
+
+        self.load_database_table()
+
+
+    def del_expense(self):
+        current_row = self.data_table.currentRow()
+        print(current_row)
+        if current_row >= 0:
+
+            expense_id = int(self.data_table.item(current_row, 0).text())
+  
+            validation = QMessageBox.question(self, "Delete Expense", "Are you sure?")
+            if validation == QMessageBox.StandardButton.Yes:
+
+                query = QSqlQuery()
+                query.prepare("""
+                            DELETE FROM expenses 
+                            WHERE id = ?
+                            """)
+                query.addBindValue(expense_id)
+                query.exec()
+
+                self.load_database_table()
+
+        else:
+            QMessageBox.warning(self, "No items selected", "Please select an expense to delete!")
+            return
 
 # App exec
 if __name__ == '__main__':
