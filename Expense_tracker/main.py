@@ -2,12 +2,9 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QLineEdit, QLabel, QComboBox, QDateEdit, QTableWidget, QMessageBox, QTableWidgetItem
 )
-from PyQt6.QtSql import QSqlDatabase, QSqlQuery
 from PyQt6.QtCore import QDate
-from pathlib import Path
-import sys
-import os
-
+from Data.db_utils import db_init, db_get_all_expenses, db_insert_expense, db_del_expense
+from tracker_utils import validate_expense_input
 
 class TrackerApp(QWidget):
     def __init__(self):
@@ -15,8 +12,7 @@ class TrackerApp(QWidget):
 
         self.setWindowTitle('Expense Tracker')
         self.resize(525, 400)
-
-
+        
         self.master_column = QVBoxLayout()
         self.first_row = QHBoxLayout()
         self.second_row = QHBoxLayout()
@@ -58,119 +54,78 @@ class TrackerApp(QWidget):
         self.master_column.addWidget(self.data_table)
 
         self.setLayout(self.master_column)
-        self.load_database_table()
 
         self.btn_add_expense.clicked.connect(self.add_expense)
         self.btn_del_expense.clicked.connect(self.del_expense)
 
+        self.show_expenses()
+    
 
-    def load_database_table(self):
+    def show_expenses(self):
+        expenses_list = db_get_all_expenses()
         self.data_table.setRowCount(0)
-
-        query = QSqlQuery("""
-            SELECT * FROM expenses
-        """)
-
         row = 0
-        while query.next():
-            expense_id = query.value(0)
-            expense_date = query.value(1)
-            expense_category = query.value(2)
-            expense_amount = query.value(3)
-            expense_description = query.value(4)
+        for expense in expenses_list:
+            
+            if expense["amount"]:
+                amount = float(expense["amount"])
+                amount = f'{amount:.2f}'
+            else:
+                amount = f'{0:.2f}'
 
-            # Add values to tables
             self.data_table.insertRow(row)
-            self.data_table.setItem(row, 0, QTableWidgetItem(str(expense_id)))
-            self.data_table.setItem(row, 1, QTableWidgetItem(expense_date))
-            self.data_table.setItem(row, 2, QTableWidgetItem(expense_category))
-            self.data_table.setItem(row, 3, QTableWidgetItem(str(expense_amount)))
-            self.data_table.setItem(row, 4, QTableWidgetItem(expense_description))    
+            self.data_table.setItem(row, 0, QTableWidgetItem(str(expense["id"])))
+            self.data_table.setItem(row, 1, QTableWidgetItem(expense["date"]))
+            self.data_table.setItem(row, 2, QTableWidgetItem(expense["category"]))
+            self.data_table.setItem(row, 3, QTableWidgetItem(str(amount)))
+            self.data_table.setItem(row, 4, QTableWidgetItem(expense["description"]))
 
             row += 1
 
 
-    def add_expense(self):
+    def add_expense(self):  
         date = self.date_panel.date().toString("dd-MM-yyyy")
         category = self.category_panel.currentText()
-        amount = self.amount_panel.text()
+
+        try:
+            amount = float(self.amount_panel.text())
+        except ValueError:
+            QMessageBox.warning(None, "Amount", "Enter a valid number")
+            return
+
         description = self.description_panel.text()
 
-        query = QSqlQuery()
-
-        query.prepare("""
-                      INSERT INTO expenses
-                        (date, category, amount, description)
-                      VALUES
-                        (?, ?, ?, ?)
-                    """)
-
-        query.addBindValue(date)
-        query.addBindValue(category)
-        query.addBindValue(amount)
-        query.addBindValue(description)
-
-        query.exec()
-
-
-        self.date_panel.setDate(QDate.currentDate())
-        self.category_panel.setCurrentIndex(0)
-        self.amount_panel.clear()
-        self.description_panel.clear()
-
-        self.load_database_table()
-
+        if db_insert_expense(date, category, amount, description):
+            self.date_panel.setDate(QDate.currentDate())
+            self.category_panel.setCurrentIndex(0)
+            self.amount_panel.clear()
+            self.description_panel.clear()
+            self.show_expenses()
+    
 
     def del_expense(self):
         current_row = self.data_table.currentRow()
-        print(current_row)
+
         if current_row >= 0:
-
             expense_id = int(self.data_table.item(current_row, 0).text())
-  
-            validation = QMessageBox.question(self, "Delete Expense", "Are you sure?")
-            if validation == QMessageBox.StandardButton.Yes:
 
-                query = QSqlQuery()
-                query.prepare("""
-                            DELETE FROM expenses 
-                            WHERE id = ?
-                            """)
-                query.addBindValue(expense_id)
-                query.exec()
+            confirm = QMessageBox.question(None, "Delete Expense", "Are you sure?")
 
-                self.load_database_table()
+            if confirm == QMessageBox.StandardButton.Yes:
+                if db_del_expense(expense_id):
+                    self.show_expenses()
+            else:
+                return
 
         else:
-            QMessageBox.warning(self, "No items selected", "Please select an expense to delete!")
-            return
+            QMessageBox.warning(None, "Delete Expense", "No expense has been selected")
+
 
 # App exec
 if __name__ == '__main__':
     app = QApplication([])
-    
-        # Database
-    database = QSqlDatabase.addDatabase("QSQLITE")
 
-    script_dir = Path(__file__).parent.resolve()
-    db_path = os.path.join(script_dir, 'tracker.db')
-    database.setDatabaseName(db_path)
-    
-    if not database.open():
-        QMessageBox.critical(None, "Error", "could not load the database")
-        sys.exit(1)
-
-    query = QSqlQuery()
-    query.exec("""
-                CREATE TABLE IF NOT EXISTS expenses (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    date TEXT,
-                    category TEXT, 
-                    amount REAL,
-                    description TEXT
-                )            
-                """)
-    
+    db_init()    
     main_window = TrackerApp()
     main_window.show()
     app.exec()
